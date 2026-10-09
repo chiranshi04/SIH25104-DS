@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login — SIH25104</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="auth-page">
+    <section class="auth-card">
+      <h1>Campus Assistant</h1>
+      <p>Login or create a student account.</p>
+
+      <div id="auth-message" class="error-banner hidden"></div>
+
+      <form id="login-form" class="auth-form">
+        <h2>Login</h2>
+        <label for="login-email">Email</label>
+        <input id="login-email" name="email" type="email" autocomplete="email" required />
+        <label for="login-password">Password</label>
+        <input id="login-password" name="password" type="password" autocomplete="current-password" required />
+        <button type="submit" class="send-btn">Login</button>
+      </form>
+
+      <form id="register-form" class="auth-form">
+        <h2>Register</h2>
+        <label for="register-name">Name</label>
+        <input id="register-name" name="name" type="text" autocomplete="name" required />
+        <label for="register-email">Email</label>
+        <input id="register-email" name="email" type="email" autocomplete="email" required />
+        <label for="register-password">Password (minimum 8 characters)</label>
+        <input id="register-password" name="password" type="password" minlength="8" autocomplete="new-password" required />
+        <button type="submit" class="send-btn">Create student account</button>
+      </form>
+
+      <a href="index.html">Continue as guest</a>
+    </section>
+  </main>
+  <script src="auth.js"></script>
+</body>
+</html>

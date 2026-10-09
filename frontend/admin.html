@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard — SIH25104</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="admin-shell">
+    <header class="admin-header">
+      <div><h1>Campus Assistant Admin</h1><p id="admin-user-label"></p></div>
+      <div><a href="index.html">Chat</a><button id="logout-btn" type="button">Logout</button></div>
+    </header>
+    <div id="admin-error" class="error-banner hidden"></div>
+    <nav class="admin-tabs" aria-label="Admin sections">
+      <button data-tab="overview">Overview</button>
+      <button data-tab="notices">Notices</button>
+      <button data-tab="feedback">Feedback</button>
+      <button data-tab="users">Users</button>
+      <button data-tab="documents">Documents</button>
+    </nav>
+    <section id="tab-overview" class="admin-tab-panel"></section>
+    <section id="tab-notices" class="admin-tab-panel hidden">
+      <h2>Notices</h2>
+      <form id="notice-form" class="admin-form">
+        <input id="notice-id" type="hidden" />
+        <label>Title <input id="notice-title" maxlength="200" required /></label>
+        <label>Content <textarea id="notice-content" maxlength="10000" required></textarea></label>
+        <label><input id="notice-active" type="checkbox" checked /> Active</label>
+        <button type="submit">Save notice</button><button id="notice-cancel" type="button" class="hidden">Cancel edit</button>
+      </form>
+      <div id="notices-table"></div>
+    </section>
+    <section id="tab-feedback" class="admin-tab-panel hidden">
+      <h2>Feedback</h2>
+      <label>Filter <select id="feedback-filter"><option value="">All</option><option value="positive">Positive</option><option value="negative">Negative</option></select></label>
+      <div id="feedback-table"></div><div id="feedback-pagination"></div>
+    </section>
+    <section id="tab-users" class="admin-tab-panel hidden">
+      <h2>Users</h2><div id="users-table"></div>
+    </section>
+    <section id="tab-documents" class="admin-tab-panel hidden">
+      <h2>Documents</h2>
+      <p id="document-permission-note"></p>
+      <form id="document-upload-form" class="admin-form">
+        <label>Upload PDF, DOCX, or TXT
+          <input id="document-file" type="file" accept=".pdf,.docx,.txt" required />
+        </label>
+        <button type="submit" id="document-upload-button">Upload document</button>
+      </form>
+      <div id="document-upload-status"></div>
+      <div id="documents-table"></div>
+    </section>
+  </main>
+  <script src="admin.js"></script>
+</body>
+</html>

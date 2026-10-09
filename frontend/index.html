@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Institutional Chatbot — SIH25104</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="app">
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-text">
+        <h1>Campus Assistant</h1>
+        <p>Ask about admissions, scholarships, exams, and notices — in any language.</p>
+      </div>
+      <div class="header-actions">
+        <div id="auth-status"></div>
+        <button id="clear-btn" class="clear-btn" title="Clear conversation">
+          Clear chat
+        </button>
+      </div>
+    </header>
+
+    <aside id="conversations-sidebar" class="conversations-sidebar hidden">
+      <h2>Your conversations</h2>
+      <div id="conversation-list"></div>
+    </aside>
+    <section id="notices-panel" class="notices-panel">
+      <div class="panel-heading">
+        <h2>Notices</h2>
+        <span class="placeholder-tab">Documents (next phase)</span>
+      </div>
+      <div id="public-notices-list"></div>
+    </section>
+
+    <!-- Chat area -->
+    <main id="chat-area" class="chat-area">
+      <div class="empty-state" id="empty-state">
+        <p>No messages yet.</p>
+        <p class="empty-sub">Try asking: "Scholarship ki eligibility kya hai?"</p>
+      </div>
+    </main>
+
+    <!-- Error banner (hidden by default) -->
+    <div id="error-banner" class="error-banner hidden">
+      <span id="error-text">Something went wrong.</span>
+      <button id="error-dismiss" class="error-dismiss">&times;</button>
+    </div>
+
+    <!-- Input area -->
+    <footer class="input-area">
+      <textarea
+        id="message-input"
+        placeholder="Type your question here..."
+        rows="1"
+      ></textarea>
+      <button id="send-btn" class="send-btn">Send</button>
+    </footer>
+
+  </div>
+
+  <!-- Reusable template for a single bot message bubble -->
+  <template id="bot-message-template">
+    <div class="message bot-message">
+      <div class="bubble">
+        <p class="answer-text"></p>
+        <div class="meta-row">
+          <span class="language-tag"></span>
+          <span class="confidence-tag"></span>
+        </div>
+        <div class="sources-box">
+          <p class="sources-title">Sources</p>
+          <ul class="sources-list"></ul>
+        </div>
+        <div class="feedback-row">
+          <span class="feedback-label">Was this helpful?</span>
+          <button class="feedback-btn feedback-yes" data-value="up">👍</button>
+          <button class="feedback-btn feedback-no" data-value="down">👎</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Reusable template for a single user message bubble -->
+  <template id="user-message-template">
+    <div class="message user-message">
+      <div class="bubble">
+        <p class="answer-text"></p>
+      </div>
+    </div>
+  </template>
+
+  <!-- Loading indicator template -->
+  <template id="loading-template">
+    <div class="message bot-message loading-message">
+      <div class="bubble loading-bubble">
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+      </div>
+    </div>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
