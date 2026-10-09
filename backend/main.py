@@ -18,6 +18,8 @@ from sqlalchemy.orm import Session
 from backend.api import admin, auth, chat, conversations, documents, notices
 from backend.config import settings
 from backend.database.connection import get_db, init_db
+from backend.services.ai_service import health as ai_health
+from backend.services.ai_service import validate_ai_configuration
 
 logging.basicConfig(level=logging.INFO)
 
@@ -25,6 +27,11 @@ logging.basicConfig(level=logging.INFO)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """App start par database tables ensure karo."""
+    validate_ai_configuration()
+    if settings.AI_MODE == "dummy":
+        logging.getLogger(__name__).warning(
+            "AI_MODE=dummy is active: this is development/test only and is not a real AI service."
+        )
     init_db()
     yield
 
@@ -77,6 +84,11 @@ def root():
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+
+@app.get("/health/ai")
+def ai_health_check():
+    return ai_health()
 
 
 @app.get("/health/db")

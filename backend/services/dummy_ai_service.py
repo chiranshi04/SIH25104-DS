@@ -1,16 +1,10 @@
-"""
-dummy_ai_service.py
---------------------
-Yeh ek TEMPORARY fake AI service hai.
-Phase 11 mein hum is function ke andar ka code replace kar denge
-Student 1 ke asli service call se.
-"""
+"""Development/test-only dummy AI; never use this module for production AI logic."""
 
 from backend.database.schemas import AIRequest, AIResponse, Source
 
 
 def get_dummy_answer(request: AIRequest) -> AIResponse:
-    """Dummy response mein received previous turns ka count batao."""
+    """Return a deterministic development response for local testing only."""
     previous_turns = len(request.history)
     return AIResponse(
         answer=(
@@ -18,8 +12,6 @@ def get_dummy_answer(request: AIRequest) -> AIResponse:
             f"(received {previous_turns} previous turns)"
         ),
         language="hinglish",
-        sources=[
-            Source(document="sample_document.pdf", page=1, section="Demo")
-        ],
+        sources=[Source(document="sample_document.pdf", page=1, section="Demo")],
         confidence=1.0,
     )

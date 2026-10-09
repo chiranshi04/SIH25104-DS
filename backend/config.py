@@ -42,6 +42,11 @@ class Settings:
     # Documents frontend folder ke bahar store honge
     UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "./uploads")
     MAX_UPLOAD_MB: int = int(os.getenv("MAX_UPLOAD_MB", "10"))
+    # Student 1 adapter mode: dummy (development), http, or module
+    AI_MODE: str = os.getenv("AI_MODE", "dummy").strip().lower()
+    AI_BASE_URL: str = os.getenv("AI_BASE_URL", "").strip().rstrip("/")
+    AI_TIMEOUT_SECONDS: float = float(os.getenv("AI_TIMEOUT_SECONDS", "30"))
+    AI_MODULE_PATH: str = os.getenv("AI_MODULE_PATH", "").strip()
 
 
 # Ek hi settings object poore app mein use hoga

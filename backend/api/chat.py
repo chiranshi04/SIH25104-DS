@@ -6,11 +6,10 @@ Yeh file /chat API route define karti hai.
 
 import logging
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.auth.dependencies import get_current_user_optional
-from backend.config import settings
 from backend.database.connection import get_db
 from backend.database.models import Conversation, User
 from backend.database.schemas import AIRequest, AIResponse, ChatRequest, ChatResponse
@@ -19,7 +18,12 @@ from backend.services.conversation_service import (
     get_or_create_conversation,
     save_turn,
 )
-from backend.services.dummy_ai_service import get_dummy_answer
+from backend.services.ai_service import (
+    AIInvalidResponseError,
+    AITimeoutError,
+    AIUnavailableError,
+    answer as get_ai_answer,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -67,17 +71,36 @@ def chat(
         history=history,
     )
 
-    if settings.ENVIRONMENT == "production":
-        logger.info(
-            "AIRequest sent: conversation_id=%s history_count=%d message_length=%d",
+    logger.info(
+        "AIRequest sent: conversation_id=%s history_count=%d message_length=%d",
+        ai_request.conversation_id,
+        len(ai_request.history),
+        len(ai_request.message),
+    )
+    try:
+        ai_response: AIResponse = get_ai_answer(
+            ai_request.message,
             ai_request.conversation_id,
-            len(ai_request.history),
-            len(ai_request.message),
+            [item.model_dump() for item in ai_request.history],
         )
-    else:
-        logger.info("AIRequest sent: %s", ai_request.model_dump_json())
-
-    ai_response: AIResponse = AIResponse.model_validate(get_dummy_answer(ai_request))
+    except AITimeoutError:
+        db.rollback()
+        raise HTTPException(
+            status_code=504,
+            detail="The AI service took too long to respond. Please try again.",
+        ) from None
+    except AIInvalidResponseError:
+        db.rollback()
+        raise HTTPException(
+            status_code=502,
+            detail="The AI service returned an invalid response.",
+        ) from None
+    except AIUnavailableError:
+        db.rollback()
+        raise HTTPException(
+            status_code=503,
+            detail="Sorry, the AI service is temporarily unavailable. Please try again.",
+        ) from None
     response_id = save_turn(db, conversation.id, request.message, ai_response)
 
     return ChatResponse(

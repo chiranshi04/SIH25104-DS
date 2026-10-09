@@ -1,4 +1,4 @@
-"""Admin document storage API; AI ingestion remains a Phase 11 boundary."""
+"""Admin document storage API; AI ingestion runs through the Phase 11 adapter."""
 
 import logging
 import uuid
@@ -39,6 +39,19 @@ def as_response(document: Document) -> DocumentResponse:
         ingestion_status=document.ingestion_status,
         ingestion_error=document.ingestion_error,
     )
+
+
+def apply_ingestion_result(document: Document, path: Path) -> None:
+    try:
+        result = ingestion_service.ingest_document(
+            str(path), document.id, document.original_filename
+        )
+        document.ingestion_status = result.get("status", "failed")
+        document.ingestion_error = result.get("error")
+    except Exception:
+        logger.exception("Document ingestion failed for document %s", document.id)
+        document.ingestion_status = "failed"
+        document.ingestion_error = "AI ingestion failed"
 
 
 @router.post("/documents/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
@@ -99,9 +112,7 @@ async def upload_document(
         raise HTTPException(status_code=409, detail="A document with the same contents already exists") from None
     db.refresh(document)
 
-    result = ingestion_service.ingest_document(str(destination), document.id, original_filename)
-    document.ingestion_status = result.get("status", "pending")
-    document.ingestion_error = result.get("error")
+    apply_ingestion_result(document, destination)
     db.commit()
     db.refresh(document)
     return as_response(document)
@@ -118,6 +129,26 @@ def list_documents(
     return [as_response(document) for document in documents]
 
 
+@router.post("/documents/{document_id}/reingest", response_model=DocumentResponse)
+def reingest_document(
+    document_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles("admin")),
+):
+    document = db.get(Document, document_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    path = upload_root() / document.stored_filename
+    if not path.is_file():
+        document.ingestion_status = "failed"
+        document.ingestion_error = "Stored document file is missing"
+    else:
+        apply_ingestion_result(document, path)
+    db.commit()
+    db.refresh(document)
+    return as_response(document)
+
+
 @router.delete("/documents/{document_id}", response_model=DocumentDeleteResponse)
 def delete_document(
     document_id: int,
@@ -131,7 +162,7 @@ def delete_document(
     warning = None
     try:
         result = ingestion_service.delete_document(document.id, document.original_filename)
-        if result.get("status") != "pending" and result.get("error"):
+        if result.get("error"):
             warning = result["error"]
     except Exception as exc:
         warning = "AI-side document deletion failed"
