@@ -73,6 +73,7 @@ class ConversationMessage(BaseModel):
     confidence: Optional[float] = None
     sources: List[Source] = Field(default_factory=list)
     response_id: Optional[int] = None
+    feedback: Optional[str] = None
 
 
 class ConversationHistoryResponse(BaseModel):

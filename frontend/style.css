@@ -274,6 +274,24 @@ body {
   border-color: var(--color-accent);
 }
 
+.feedback-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.feedback-status,
+.feedback-error {
+  font-size: 0.72rem;
+}
+
+.feedback-status {
+  color: var(--color-success);
+}
+
+.feedback-error {
+  color: var(--color-error-text);
+}
+
 /* Loading dots */
 .loading-bubble {
   display: flex;

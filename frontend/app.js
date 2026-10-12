@@ -164,6 +164,36 @@ function formatSource(source) {
   return parts.join(" — ");
 }
 
+async function submitFeedback(messageElement, button, value) {
+  const buttons = messageElement.querySelectorAll(".feedback-btn");
+  const status = messageElement.querySelector(".feedback-status");
+  const error = messageElement.querySelector(".feedback-error");
+  buttons.forEach((item) => { item.disabled = true; });
+  status.textContent = "";
+  error.textContent = "";
+  try {
+    const response = await fetchWithAuth(`${API_BASE_URL}/feedback`, {
+      method: "POST",
+      body: JSON.stringify({
+        response_id: Number(messageElement.dataset.responseId),
+        feedback: value === "up" ? "positive" : "negative",
+      }),
+    });
+    if (!response.ok) throw new Error(`Server returned status ${response.status}`);
+    await response.json();
+    buttons.forEach((item) => item.classList.remove("selected"));
+    button.classList.add("selected");
+    status.textContent = "Thanks for your feedback";
+  } catch (requestError) {
+    buttons.forEach((item) => item.classList.remove("selected"));
+    if (requestError.message !== "SESSION_EXPIRED") {
+      error.textContent = "Could not save feedback. Please try again.";
+    }
+  } finally {
+    buttons.forEach((item) => { item.disabled = false; });
+  }
+}
+
 function addBotMessage(data) {
   const node = botTemplate.content.cloneNode(true);
   const messageElement = node.querySelector(".bot-message");
@@ -211,11 +241,16 @@ function addBotMessage(data) {
     sourcesBox.appendChild(emptySources);
   }
 
+  const feedbackValue = data.feedback;
   node.querySelectorAll(".feedback-btn").forEach((button) => {
-    button.addEventListener("click", () => {
-      node.querySelectorAll(".feedback-btn").forEach((item) => item.classList.remove("selected"));
+    if ((feedbackValue === "positive" && button.dataset.value === "up")
+      || (feedbackValue === "negative" && button.dataset.value === "down")) {
       button.classList.add("selected");
-      console.log("Feedback recorded (local only for now):", button.dataset.value);
+    }
+    button.addEventListener("click", () => {
+      if (messageElement.dataset.responseId) {
+        submitFeedback(messageElement, button, button.dataset.value);
+      }
     });
   });
   chatArea.appendChild(node);
@@ -239,6 +274,7 @@ function renderConversation(messages) {
         confidence: item.confidence,
         sources: item.sources,
         response_id: item.response_id,
+        feedback: item.feedback,
       });
     }
   });

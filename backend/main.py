@@ -15,7 +15,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from backend.api import admin, auth, chat, conversations, documents, notices
+from backend.api import admin, auth, chat, conversations, documents, feedback, notices
 from backend.config import settings
 from backend.database.connection import get_db, init_db
 from backend.services.ai_service import health as ai_health
@@ -71,6 +71,7 @@ app.include_router(auth.router)
 app.include_router(notices.router)
 app.include_router(admin.router)
 app.include_router(documents.router)
+app.include_router(feedback.router)
 
 
 @app.get("/")

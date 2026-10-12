@@ -101,6 +101,7 @@ def get_conversation(
                 if response
                 else [],
                 response_id=response.id if response else None,
+                feedback=response.feedback.feedback if response and response.feedback else None,
             )
         )
 
