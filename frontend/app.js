@@ -135,6 +135,30 @@ function addUserMessage(text) {
   updateEmptyState();
 }
 
+function readableLanguage(value) {
+  if (typeof value !== "string" || value.length === 0) return "";
+  const labels = {
+    english: "English",
+    hindi: "Hindi (हिंदी)",
+    hinglish: "Hinglish",
+  };
+  return labels[value.toLowerCase()] || `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
+}
+
+function formatSource(source) {
+  const parts = [];
+  if (source && source.document !== undefined && source.document !== null) {
+    parts.push(String(source.document));
+  }
+  if (source && source.page !== undefined && source.page !== null) {
+    parts.push(`Page ${source.page}`);
+  }
+  if (source && source.section !== undefined && source.section !== null && source.section !== "") {
+    parts.push(String(source.section));
+  }
+  return parts.join(" — ");
+}
+
 function addBotMessage(data) {
   const node = botTemplate.content.cloneNode(true);
   const messageElement = node.querySelector(".bot-message");
@@ -142,23 +166,44 @@ function addBotMessage(data) {
     messageElement.dataset.responseId = data.response_id;
   }
   node.querySelector(".answer-text").textContent = data.answer;
-  node.querySelector(".language-tag").textContent = `Language: ${data.language}`;
-  node.querySelector(".confidence-tag").textContent =
-    `Confidence: ${Math.round(data.confidence * 100)}%`;
+  const languageLabel = readableLanguage(data.language);
+  const languageTag = node.querySelector(".language-tag");
+  if (languageLabel) {
+    languageTag.textContent = `Language: ${languageLabel}`;
+  } else {
+    languageTag.classList.add("hidden");
+  }
+
+  const confidenceTag = node.querySelector(".confidence-tag");
+  const confidenceNote = node.querySelector(".confidence-note");
+  const confidence = data.confidence;
+  if (typeof confidence === "number" && Number.isFinite(confidence)) {
+    confidenceTag.textContent = `Confidence: ${Math.round(confidence * 100)}%`;
+    if (confidence >= 0.75) confidenceTag.classList.add("confidence-normal");
+    else if (confidence >= 0.5) confidenceTag.classList.add("confidence-caution");
+    else {
+      confidenceTag.classList.add("confidence-low");
+      confidenceNote.textContent =
+        "This answer may not be reliable. Please verify with the college office.";
+      confidenceNote.classList.remove("hidden");
+    }
+  } else {
+    confidenceTag.classList.add("hidden");
+  }
 
   const sourcesBox = node.querySelector(".sources-box");
   const sourcesList = node.querySelector(".sources-list");
-  if (data.sources && data.sources.length > 0) {
+  if (Array.isArray(data.sources) && data.sources.length > 0) {
     data.sources.forEach((source) => {
       const li = document.createElement("li");
-      let line = source.document;
-      if (source.page !== null && source.page !== undefined) line += `, page ${source.page}`;
-      if (source.section) line += ` — ${source.section}`;
-      li.textContent = line;
+      li.textContent = formatSource(source);
       sourcesList.appendChild(li);
     });
   } else {
-    sourcesBox.classList.add("hidden");
+    const emptySources = document.createElement("p");
+    emptySources.className = "sources-empty";
+    emptySources.textContent = "No source found for this answer";
+    sourcesBox.appendChild(emptySources);
   }
 
   node.querySelectorAll(".feedback-btn").forEach((button) => {

@@ -19,7 +19,7 @@
   --color-success: #3E6B52;
 
   --font-heading: "Iowan Old Style", "Palatino Linotype", "Georgia", serif;
-  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-body: "Noto Sans Devanagari", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
   --radius-md: 10px;
   --radius-lg: 16px;
@@ -126,6 +126,7 @@ body {
 .message {
   display: flex;
   max-width: 82%;
+  min-width: 0;
 }
 
 .user-message {
@@ -137,10 +138,13 @@ body {
 }
 
 .bubble {
+  min-width: 0;
   padding: 12px 16px;
   border-radius: var(--radius-lg);
   line-height: 1.5;
   font-size: 0.95rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .user-message .bubble {
@@ -159,6 +163,7 @@ body {
 .answer-text {
   margin: 0;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 /* Meta row: language + confidence */
@@ -177,6 +182,28 @@ body {
   background: white;
   border: 1px solid var(--color-border);
   color: var(--color-ink-soft);
+}
+
+.confidence-normal {
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.confidence-caution {
+  border-color: var(--color-accent);
+  color: #8A5A16;
+}
+
+.confidence-low {
+  border-color: var(--color-ink-soft);
+  color: var(--color-ink-soft);
+}
+
+.confidence-note {
+  margin: 7px 0 0;
+  color: var(--color-ink-soft);
+  font-size: 0.76rem;
+  line-height: 1.35;
 }
 
 /* Sources box */
@@ -205,6 +232,14 @@ body {
 
 .sources-list li {
   margin-bottom: 2px;
+  overflow-wrap: anywhere;
+}
+
+.sources-empty {
+  margin: 0;
+  color: var(--color-ink-soft);
+  font-size: 0.82rem;
+  font-style: italic;
 }
 
 /* Feedback row */
