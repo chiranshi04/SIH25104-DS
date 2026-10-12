@@ -14,7 +14,7 @@ from backend.config import settings
 from backend.database.connection import get_db
 from backend.database.document_schemas import DocumentDeleteResponse, DocumentResponse
 from backend.database.models import Document, User
-from backend.errors import UploadFailedError
+from backend.errors import InvalidDocumentError, UploadFailedError
 from backend.services import ingestion_service
 from backend.services.document_service import (
     clean_original_filename,
@@ -66,7 +66,7 @@ async def upload_document(
     try:
         validate_reported_type(extension, file.content_type)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise InvalidDocumentError(str(exc)) from exc
 
     stored_filename = f"{uuid.uuid4()}{extension}"
     try:
@@ -77,7 +77,7 @@ async def upload_document(
     try:
         size_bytes, sha256 = await stream_to_disk(file, destination, max_bytes)
         if size_bytes == 0:
-            raise HTTPException(status_code=400, detail="Empty files are not allowed")
+            raise InvalidDocumentError("Empty files are not allowed")
         validate_magic(destination, extension)
     except OverflowError as exc:
         destination.unlink(missing_ok=True)
@@ -90,10 +90,10 @@ async def upload_document(
         raise UploadFailedError() from None
     except ValueError as exc:
         destination.unlink(missing_ok=True)
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise InvalidDocumentError(str(exc)) from exc
     except Exception:
         destination.unlink(missing_ok=True)
-        raise HTTPException(status_code=400, detail="Could not validate uploaded file") from None
+        raise InvalidDocumentError("Could not validate uploaded file") from None
 
     duplicate = db.scalar(select(Document).where(Document.sha256 == sha256))
     if duplicate:
