@@ -15,12 +15,7 @@ document.getElementById("admin-user-label").textContent = user ? `Signed in as $
 function showError(message) { errorBox.textContent = message; errorBox.classList.remove("hidden"); }
 function clearError() { errorBox.classList.add("hidden"); }
 function headers() { return { "Content-Type": "application/json", Authorization: `Bearer ${token}` }; }
-async function api(path, options = {}) {
-  const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers: { ...headers(), ...(options.headers || {}) } });
-  if (response.status === 401) { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); window.location.href = "login.html"; throw new Error("Session expired"); }
-  if (!response.ok) { let detail = `Request failed (${response.status})`; try { detail = (await response.json()).detail || detail; } catch (error) {} throw new Error(detail); }
-  return response.status === 204 ? null : response.json();
-}
+async function api(path, options = {}) { return apiFetch(path, options); }
 function cell(text) { const node = document.createElement("td"); node.textContent = text ?? ""; return node; }
 function button(text, handler) { const node = document.createElement("button"); node.type = "button"; node.textContent = text; node.addEventListener("click", handler); return node; }
 
@@ -90,8 +85,7 @@ documentForm.addEventListener("submit", async (event) => {
   documentStatus.textContent = "Uploading...";
   const formData = new FormData(); formData.append("file", file);
   try {
-    const response = await fetch(`${API_BASE_URL}/documents/upload`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: formData });
-    if (!response.ok) { let detail = `Upload failed (${response.status})`; try { detail = (await response.json()).detail || detail; } catch (error) {} throw new Error(detail); }
+    await apiFetch("/documents/upload", { method: "POST", body: formData });
     documentStatus.textContent = "Upload complete."; documentForm.reset(); await loadDocuments(); await loadStats();
   } catch (error) { documentStatus.textContent = ""; showError(error.message); }
 });

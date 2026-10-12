@@ -9,6 +9,7 @@ const sendBtn = document.getElementById("send-btn");
 const clearBtn = document.getElementById("clear-btn");
 const errorBanner = document.getElementById("error-banner");
 const errorText = document.getElementById("error-text");
+const retryBtn = document.getElementById("retry-btn");
 const errorDismiss = document.getElementById("error-dismiss");
 const authStatus = document.getElementById("auth-status");
 const conversationsSidebar = document.getElementById("conversations-sidebar");
@@ -25,6 +26,7 @@ const USER_STORAGE_KEY = "sih25104_user";
 
 let conversationId = getStoredConversationId();
 let currentUser = getStoredUser();
+let lastFailedText = "";
 
 function createConversationId() {
   if (window.crypto && typeof window.crypto.randomUUID === "function") {
@@ -79,16 +81,6 @@ function authHeaders() {
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
   return headers;
-}
-
-async function fetchWithAuth(url, options = {}) {
-  const headers = { ...authHeaders(), ...(options.headers || {}) };
-  const response = await fetch(url, { ...options, headers });
-  if (response.status === 401) {
-    showSessionExpired();
-    throw new Error("SESSION_EXPIRED");
-  }
-  return response;
 }
 
 function updateAuthUI() {
@@ -172,15 +164,13 @@ async function submitFeedback(messageElement, button, value) {
   status.textContent = "";
   error.textContent = "";
   try {
-    const response = await fetchWithAuth(`${API_BASE_URL}/feedback`, {
+    await apiFetch(`${API_BASE_URL}/feedback`, {
       method: "POST",
       body: JSON.stringify({
         response_id: Number(messageElement.dataset.responseId),
         feedback: value === "up" ? "positive" : "negative",
       }),
     });
-    if (!response.ok) throw new Error(`Server returned status ${response.status}`);
-    await response.json();
     buttons.forEach((item) => item.classList.remove("selected"));
     button.classList.add("selected");
     status.textContent = "Thanks for your feedback";
@@ -291,13 +281,15 @@ function removeLoading(element) {
   if (element) element.remove();
 }
 
-function showError(message) {
+function showError(message, canRetry = false) {
   errorText.textContent = message;
   errorBanner.classList.remove("hidden");
+  retryBtn.classList.toggle("hidden", !canRetry);
 }
 
 function hideError() {
   errorBanner.classList.add("hidden");
+  retryBtn.classList.add("hidden");
 }
 
 function scrollToBottom() {
@@ -308,37 +300,29 @@ function scrollToBottom() {
    Authenticated API calls
    ---------------------------------------------------------- */
 async function getBotReply(message, currentConversationId) {
-  const response = await fetchWithAuth(`${API_BASE_URL}/chat`, {
+  return apiFetch(`${API_BASE_URL}/chat`, {
     method: "POST",
     body: JSON.stringify({
       conversation_id: currentConversationId,
       message,
     }),
   });
-  if (!response.ok) throw new Error(`Server returned status ${response.status}`);
-  return response.json();
 }
 
 async function restoreConversation() {
   try {
-    const response = await fetchWithAuth(
+    const data = await apiFetch(
       `${API_BASE_URL}/conversations/${encodeURIComponent(conversationId)}`
     );
-    if (response.status === 404) return;
-    if (!response.ok) throw new Error(`Server returned status ${response.status}`);
-    renderConversation((await response.json()).messages);
+    renderConversation(data.messages);
   } catch (error) {
-    if (error.message !== "SESSION_EXPIRED") {
-      showError("Could not restore this conversation. Please try again.");
-    }
+    if (error.status !== 404) showError(error.message || "Could not restore this conversation.");
   }
 }
 
 async function loadConversationList() {
   try {
-    const response = await fetchWithAuth(`${API_BASE_URL}/conversations`);
-    if (!response.ok) throw new Error(`Server returned status ${response.status}`);
-    const data = await response.json();
+    const data = await apiFetch(`${API_BASE_URL}/conversations`);
     conversationList.textContent = "";
     data.conversations.forEach((item) => {
       const button = document.createElement("button");
@@ -357,16 +341,12 @@ async function loadConversationList() {
       });
       conversationList.appendChild(button);
     });
-  } catch (error) {
-    if (error.message !== "SESSION_EXPIRED") showError("Could not load your conversations.");
-  }
+  } catch (error) { showError(error.message || "Could not load your conversations."); }
 }
 
 async function loadPublicNotices() {
   try {
-    const response = await fetch(`${API_BASE_URL}/notices`);
-    if (!response.ok) throw new Error("notices request failed");
-    const notices = await response.json();
+    const notices = await apiFetch(`${API_BASE_URL}/notices`);
     publicNoticesList.textContent = "";
     notices.forEach((notice) => {
       const article = document.createElement("article");
@@ -391,12 +371,12 @@ async function loadPublicNotices() {
 /* ----------------------------------------------------------
    Main send handler and controls
    ---------------------------------------------------------- */
-async function handleSend() {
-  const text = messageInput.value.trim();
+async function handleSend(textOverride = null, isRetry = false) {
+  const text = textOverride === null ? messageInput.value.trim() : textOverride;
   if (!text) return;
   hideError();
-  addUserMessage(text);
-  messageInput.value = "";
+  if (!isRetry) addUserMessage(text);
+  if (!isRetry) messageInput.value = "";
   autoResizeInput();
   sendBtn.disabled = true;
   const loadingElement = showLoading();
@@ -405,12 +385,12 @@ async function handleSend() {
     removeLoading(loadingElement);
     saveConversationId(data.conversation_id);
     addBotMessage(data);
+    lastFailedText = "";
     if (currentUser) loadConversationList();
   } catch (error) {
     removeLoading(loadingElement);
-    if (error.message !== "SESSION_EXPIRED") {
-      showError("Sorry, the AI service is temporarily unavailable. Please try again.");
-    }
+    lastFailedText = text;
+    showError(error.message || "Request failed. Please try again.", true);
   } finally {
     sendBtn.disabled = false;
     messageInput.focus();
@@ -423,6 +403,9 @@ clearBtn.addEventListener("click", () => {
   hideError();
 });
 errorDismiss.addEventListener("click", hideError);
+retryBtn.addEventListener("click", () => {
+  if (lastFailedText) handleSend(lastFailedText, true);
+});
 messageInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && !event.shiftKey) {
     event.preventDefault();

@@ -18,12 +18,7 @@ from backend.services.conversation_service import (
     get_or_create_conversation,
     save_turn,
 )
-from backend.services.ai_service import (
-    AIInvalidResponseError,
-    AITimeoutError,
-    AIUnavailableError,
-    answer as get_ai_answer,
-)
+from backend.services.ai_service import answer as get_ai_answer
 
 logger = logging.getLogger(__name__)
 
@@ -77,30 +72,11 @@ def chat(
         len(ai_request.history),
         len(ai_request.message),
     )
-    try:
-        ai_response: AIResponse = get_ai_answer(
-            ai_request.message,
-            ai_request.conversation_id,
-            [item.model_dump() for item in ai_request.history],
-        )
-    except AITimeoutError:
-        db.rollback()
-        raise HTTPException(
-            status_code=504,
-            detail="The AI service took too long to respond. Please try again.",
-        ) from None
-    except AIInvalidResponseError:
-        db.rollback()
-        raise HTTPException(
-            status_code=502,
-            detail="The AI service returned an invalid response.",
-        ) from None
-    except AIUnavailableError:
-        db.rollback()
-        raise HTTPException(
-            status_code=503,
-            detail="Sorry, the AI service is temporarily unavailable. Please try again.",
-        ) from None
+    ai_response: AIResponse = get_ai_answer(
+        ai_request.message,
+        ai_request.conversation_id,
+        [item.model_dump() for item in ai_request.history],
+    )
     response_id = save_turn(db, conversation.id, request.message, ai_response)
 
     return ChatResponse(

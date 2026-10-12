@@ -20,6 +20,7 @@ class Settings:
 
     # Environment (development / production)
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
+    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO").upper()
 
     # PostgreSQL connection Phase 6 se required hai
     DATABASE_URL: str = os.getenv("DATABASE_URL", "").strip()

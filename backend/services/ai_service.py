@@ -8,21 +8,14 @@ import httpx
 
 from backend.config import settings
 from backend.database.schemas import AIRequest, AIResponse
+from backend.errors import (
+    AIInvalidResponseError,
+    AITimeoutError,
+    AIUnavailableError,
+)
 from backend.services.dummy_ai_service import get_dummy_answer
 
 logger = logging.getLogger(__name__)
-
-
-class AIUnavailableError(Exception):
-    """AI endpoint/module is unavailable or returned a non-success status."""
-
-
-class AITimeoutError(Exception):
-    """AI endpoint exceeded the configured timeout."""
-
-
-class AIInvalidResponseError(Exception):
-    """AI returned data that does not match the stable contract."""
 
 
 _ALLOWED_MODES = {"dummy", "http", "module"}

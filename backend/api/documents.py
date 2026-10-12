@@ -14,6 +14,7 @@ from backend.config import settings
 from backend.database.connection import get_db
 from backend.database.document_schemas import DocumentDeleteResponse, DocumentResponse
 from backend.database.models import Document, User
+from backend.errors import UploadFailedError
 from backend.services import ingestion_service
 from backend.services.document_service import (
     clean_original_filename,
@@ -68,7 +69,10 @@ async def upload_document(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     stored_filename = f"{uuid.uuid4()}{extension}"
-    destination = upload_root() / stored_filename
+    try:
+        destination = upload_root() / stored_filename
+    except OSError:
+        raise UploadFailedError() from None
     max_bytes = settings.MAX_UPLOAD_MB * 1024 * 1024
     try:
         size_bytes, sha256 = await stream_to_disk(file, destination, max_bytes)
@@ -81,6 +85,9 @@ async def upload_document(
     except HTTPException:
         destination.unlink(missing_ok=True)
         raise
+    except OSError:
+        destination.unlink(missing_ok=True)
+        raise UploadFailedError() from None
     except ValueError as exc:
         destination.unlink(missing_ok=True)
         raise HTTPException(status_code=400, detail=str(exc)) from exc
