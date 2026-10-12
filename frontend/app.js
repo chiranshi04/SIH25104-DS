@@ -139,8 +139,13 @@ function readableLanguage(value) {
   if (typeof value !== "string" || value.length === 0) return "";
   const labels = {
     english: "English",
+    german: "German (Deutsch)",
     hindi: "Hindi (हिंदी)",
     hinglish: "Hinglish",
+    spanish: "Spanish (Español)",
+    french: "French (Français)",
+    greek: "Greek (Ελληνικά)",
+    italian: "Italian (Italiano)",
   };
   return labels[value.toLowerCase()] || `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }
