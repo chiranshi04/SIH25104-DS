@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-chatbot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-in-env}
+      POSTGRES_DB: ${POSTGRES_DB:-chatbot_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-chatbot}:${POSTGRES_PASSWORD:-change-me-in-env}@db:5432/${POSTGRES_DB:-chatbot_db}
+      UPLOAD_DIR: /app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - uploads_data:/app/uploads
+    ports:
+      - "8000:8000"
+
+  # ai:
+  #   # Student 1's image plugs in here when its interface is finalized.
+  #   # Set AI_MODE=http and AI_BASE_URL=http://ai:8001 in .env.
+  #   build: ../student1-ai
+  #   expose:
+  #     - "8001"
+  #   # If the AI service owns ChromaDB data, attach a named volume here:
+  #   # volumes:
+  #   #   - chroma_data:/path/inside/student1-image/chroma
+
+volumes:
+  postgres_data:
+  uploads_data:
+  # chroma_data:

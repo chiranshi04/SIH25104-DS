@@ -7,3 +7,4 @@ venv/
 uploads/
 .coverage
 htmlcov/
+docker-compose.override.yml
