@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """App start par database tables ensure karo."""
+    settings.validate_security()
     validate_ai_configuration()
     if settings.AI_MODE == "dummy":
         logger.warning(
@@ -43,16 +44,28 @@ app = FastAPI(
     version=settings.APP_VERSION,
     description="Language-Agnostic Institutional Chatbot backend (SIH25104)",
     lifespan=lifespan,
+    docs_url="/docs" if settings.DOCS_ENABLED else None,
+    redoc_url="/redoc" if settings.DOCS_ENABLED else None,
+    openapi_url="/openapi.json" if settings.DOCS_ENABLED else None,
 )
 
 
-def error_response(detail: str, code: str, status_code: int, request_id: str | None = None):
+def error_response(
+    detail: str,
+    code: str,
+    status_code: int,
+    request_id: str | None = None,
+    headers: dict[str, str] | None = None,
+):
     response = JSONResponse(
         status_code=status_code,
         content={"detail": detail, "code": code},
     )
     if request_id:
         response.headers["X-Request-ID"] = request_id
+    if headers:
+        for name, value in headers.items():
+            response.headers[name] = value
     return response
 
 
@@ -104,7 +117,8 @@ async def http_error_handler(request: Request, exc: StarletteHTTPException):
         401: ErrorCode.UNAUTHORIZED,
         403: ErrorCode.FORBIDDEN,
         404: ErrorCode.NOT_FOUND,
-        413: ErrorCode.UPLOAD_FAILED,
+        413: ErrorCode.REQUEST_TOO_LARGE,
+        429: ErrorCode.RATE_LIMITED,
     }
     detail = exc.detail if isinstance(exc.detail, str) else "Request failed."
     if exc.status_code == 401:
@@ -113,6 +127,7 @@ async def http_error_handler(request: Request, exc: StarletteHTTPException):
         detail,
         code_by_status.get(exc.status_code, ErrorCode.INTERNAL_ERROR),
         exc.status_code,
+        headers=exc.headers,
     )
 
 
@@ -130,11 +145,37 @@ async def unhandled_error_handler(request: Request, exc: Exception):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
+
+
+@app.middleware("http")
+async def security_middleware(request: Request, call_next):
+    """Apply browser hardening and reject oversized non-upload requests early."""
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            size = int(content_length)
+        except ValueError:
+            size = settings.MAX_CHAT_BODY_BYTES + 1
+        if size > settings.MAX_CHAT_BODY_BYTES and request.url.path == "/chat":
+            return error_response(
+                "Request body is too large.", ErrorCode.REQUEST_TOO_LARGE, 413
+            )
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; script-src 'self'; style-src 'self'; "
+        "img-src 'self' data:; connect-src 'self'; font-src 'self'; "
+        "object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+    )
+    return response
 
 frontend_path = Path(__file__).resolve().parent.parent / "frontend"
 app.mount("/app", StaticFiles(directory=frontend_path, html=True), name="frontend")

@@ -4,7 +4,7 @@ auth.py
 Register, login aur authorization test routes yahan hain.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -19,13 +19,15 @@ from backend.database.schemas import (
     RegisterRequest,
     UserResponse,
 )
+from backend.security.rate_limit import enforce_ip_limit
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/register", response_model=UserResponse, status_code=201)
-def register(request: RegisterRequest, db: Session = Depends(get_db)) -> User:
+def register(request: RegisterRequest, http_request: Request, db: Session = Depends(get_db)) -> User:
     """Registration hamesha student role create karti hai."""
+    enforce_ip_limit(http_request, "auth-register", 5)
     existing = db.scalar(select(User).where(User.email == request.email.lower()))
     if existing:
         raise HTTPException(status_code=409, detail="Email is already registered")
@@ -47,13 +49,14 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)) -> User:
 
 
 @router.post("/login", response_model=LoginResponse)
-def login(request: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse:
+def login(request: LoginRequest, http_request: Request, db: Session = Depends(get_db)) -> LoginResponse:
     """Wrong email/password ke liye same generic 401 message do."""
+    enforce_ip_limit(http_request, "auth-login", 10)
     user = db.scalar(select(User).where(User.email == request.email.lower()))
     if user is None or not verify_password(request.password, user.password_hash):
         raise HTTPException(status_code=401, detail=GENERIC_AUTH_ERROR)
-    if not user.is_active:
-        raise HTTPException(status_code=403, detail="User account is inactive")
+    if user is None or not user.is_active:
+        raise HTTPException(status_code=401, detail=GENERIC_AUTH_ERROR)
 
     return LoginResponse(
         access_token=create_access_token(user.id, user.role),
@@ -65,4 +68,3 @@ def login(request: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse
 @router.get("/me", response_model=UserResponse)
 def me(user: User = Depends(get_current_user)) -> User:
     return user
-

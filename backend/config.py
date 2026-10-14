@@ -21,6 +21,17 @@ class Settings:
     # Environment (development / production)
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO").upper()
+    CORS_ORIGINS: list[str] = [
+        origin.strip()
+        for origin in os.getenv(
+            "CORS_ORIGINS", "http://127.0.0.1:8000,http://localhost:8000"
+        ).split(",")
+        if origin.strip()
+    ]
+    DOCS_ENABLED: bool = os.getenv("DOCS_ENABLED", "true").strip().lower() in {
+        "1", "true", "yes", "on"
+    }
+    MAX_CHAT_BODY_BYTES: int = int(os.getenv("MAX_CHAT_BODY_BYTES", "10240"))
 
     # PostgreSQL connection Phase 6 se required hai
     DATABASE_URL: str = os.getenv("DATABASE_URL", "").strip()
@@ -48,6 +59,22 @@ class Settings:
     AI_BASE_URL: str = os.getenv("AI_BASE_URL", "").strip().rstrip("/")
     AI_TIMEOUT_SECONDS: float = float(os.getenv("AI_TIMEOUT_SECONDS", "30"))
     AI_MODULE_PATH: str = os.getenv("AI_MODULE_PATH", "").strip()
+
+    def validate_security(self) -> None:
+        if self.ENVIRONMENT.lower() != "production":
+            return
+        if self.SECRET_KEY == "dev-secret-change-later" or len(self.SECRET_KEY) < 32:
+            raise RuntimeError(
+                "Production startup refused: SECRET_KEY must be a random value of at least 32 characters."
+            )
+        if self.AI_MODE == "dummy":
+            raise RuntimeError(
+                "Production startup refused: AI_MODE=dummy is not allowed. Configure http or module."
+            )
+        if "*" in self.CORS_ORIGINS:
+            raise RuntimeError(
+                "Production startup refused: CORS_ORIGINS must not contain '*'."
+            )
 
 
 # Ek hi settings object poore app mein use hoga

@@ -35,8 +35,10 @@ def _user_from_token(token: str, db: Session) -> User:
         raise HTTPException(status_code=401, detail=GENERIC_AUTH_ERROR) from None
 
     user = db.get(User, user_id)
-    if user is None or not user.is_active:
+    if user is None:
         raise HTTPException(status_code=401, detail=GENERIC_AUTH_ERROR)
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="User account is inactive")
     return user
 
 

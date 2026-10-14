@@ -4,7 +4,7 @@ import logging
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -15,6 +15,7 @@ from backend.database.connection import get_db
 from backend.database.document_schemas import DocumentDeleteResponse, DocumentResponse
 from backend.database.models import Document, User
 from backend.errors import InvalidDocumentError, UploadFailedError
+from backend.security.rate_limit import enforce_user_limit
 from backend.services import ingestion_service
 from backend.services.document_service import (
     clean_original_filename,
@@ -57,10 +58,12 @@ def apply_ingestion_result(document: Document, path: Path) -> None:
 
 @router.post("/documents/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
 async def upload_document(
+    request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     user: User = Depends(require_roles("admin")),
 ):
+    enforce_user_limit(request, "document-upload", user.id, 10)
     original_filename = clean_original_filename(file.filename)
     extension = extension_for(original_filename)
     try:

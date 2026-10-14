@@ -6,7 +6,7 @@ Yeh file /chat API route define karti hai.
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from backend.auth.dependencies import get_current_user_optional
@@ -19,6 +19,7 @@ from backend.services.conversation_service import (
     save_turn,
 )
 from backend.services.ai_service import answer as get_ai_answer
+from backend.security.rate_limit import enforce_ip_limit, enforce_user_limit
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +32,15 @@ router = APIRouter(
 @router.post("", response_model=ChatResponse)
 def chat(
     request: ChatRequest,
+    http_request: Request,
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_current_user_optional),
 ) -> ChatResponse:
     """Message process karke successful turn ko database mein save karo."""
+    if current_user is None:
+        enforce_ip_limit(http_request, "chat", 30)
+    else:
+        enforce_user_limit(http_request, "chat", current_user.id, 60)
     existing_conversation = (
         db.get(Conversation, request.conversation_id)
         if request.conversation_id
