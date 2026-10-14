@@ -3,7 +3,7 @@
 **Project:** SIH25104 Language-Agnostic Institutional Chatbot  
 **Phase:** 15  
 **Date:** 2026-10-14  
-**Commit:** to be recorded after push
+**Commit:** Phase 15 security hardening commit on `main` (see repository history)
 
 ## Configuration and secrets
 
