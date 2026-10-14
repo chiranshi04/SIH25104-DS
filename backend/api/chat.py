@@ -78,11 +78,15 @@ def chat(
         len(ai_request.history),
         len(ai_request.message),
     )
-    ai_response: AIResponse = get_ai_answer(
-        ai_request.message,
-        ai_request.conversation_id,
-        [item.model_dump() for item in ai_request.history],
-    )
+    try:
+        ai_response: AIResponse = get_ai_answer(
+            ai_request.message,
+            ai_request.conversation_id,
+            [item.model_dump() for item in ai_request.history],
+        )
+    except Exception:
+        db.rollback()
+        raise
     response_id = save_turn(db, conversation.id, request.message, ai_response)
 
     return ChatResponse(
