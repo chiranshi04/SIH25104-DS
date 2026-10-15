@@ -125,6 +125,17 @@ pytest -v --cov=backend --cov-report=term-missing
 
 The tests use a fresh SQLite database and temporary upload directory. They do not require PostgreSQL, Docker, the real AI module, or network access.
 
+## Live E2E verification
+
+With a server already running and an admin account seeded, run the HTTPX checker against its base URL:
+
+```bash
+ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD='replace-me' \
+  python scripts/e2e_check.py http://127.0.0.1:8000
+```
+
+The checker creates a uniquely tagged temporary student, exercises chat, history, feedback, permissions, upload validation, and error handling, then removes the temporary data it created. It never removes the configured admin. Review `docs/TEST_REPORT.md` for the latest evidence and explicitly unverified scenarios.
+
 ## Project structure
 
 ```text
